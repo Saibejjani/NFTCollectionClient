@@ -29,6 +29,7 @@ const App = () => {
   const [totalCollections, setTotalColletions] = useState([]);
   const [currentContractAddress, setCurrentContractsAddress] = useState([]);
   const [currentColletion, setCurrentCollection] = useState([]);
+  const [fetchLimit, setFetchLimit] = useState(0);
 
   const handleChange = (e, name) => {
     setFormData((prevstate) => ({ ...prevstate, [name]: e.target.value }));
@@ -88,7 +89,7 @@ const App = () => {
 
         const len = await connectedContract.collectionsLength();
 
-        for (let i = 0; i < len.toNumber() - fetched; i++) {
+        for (let i = fetched; i < len.toNumber(); i++) {
           const currentAddress = await connectedContract.collections(i);
           setCurrentContractsAddress((current) => [...current, currentAddress]);
           const currentContract = new ethers.Contract(
@@ -112,10 +113,6 @@ const App = () => {
             ...current,
             { image, name, symbol },
           ]);
-
-          console.log(totalCollections);
-
-          console.log(tokenMetadata);
         }
 
         setFetched(len.toNumber());
@@ -129,8 +126,6 @@ const App = () => {
   };
 
   const fetchThisCollection = async (index) => {
-    console.log(currentColletion);
-
     try {
       const { ethereum } = window;
       console.log(prev);
@@ -138,6 +133,7 @@ const App = () => {
         setPrev(index);
         console.log(prev);
         setCurrentCollection([]);
+        setFetchLimit(0);
       }
 
       if (ethereum) {
@@ -151,7 +147,7 @@ const App = () => {
         console.log(currentContractAddress[index]);
         const totalSupply = await currentContract.totalSupply();
 
-        for (let i = 1; i <= totalSupply.toNumber(); i++) {
+        for (let i = fetchLimit + 1; i <= totalSupply.toNumber(); i++) {
           let uri = await currentContract.tokenURI(i);
           uri = `https://ipfs.io/ipfs/${uri.split("ipfs://")[1]}`;
           const tokenMetadata = await fetch(uri).then((response) =>
@@ -167,6 +163,7 @@ const App = () => {
           ]);
           console.log(image);
         }
+        setFetchLimit(totalSupply.toNumber());
       } else {
         console.log("ethereum object not found");
       }
@@ -206,7 +203,12 @@ const App = () => {
   };
   useEffect(() => {
     checkIfWalletIsConnected();
-  });
+  }, []);
+  useEffect(() => {
+    (async () => {
+      await fetchColletions();
+    })();
+  }, []);
 
   return (
     <div>
@@ -271,8 +273,8 @@ const App = () => {
                 <div
                   key={index}
                   className="col"
-                  onClick={() => {
-                    fetchThisCollection(index);
+                  onClick={async () => {
+                    await fetchThisCollection(index);
                   }}
                 >
                   <div className="card mb-4 rounded shadow-sm">
